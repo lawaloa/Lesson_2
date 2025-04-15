@@ -1,0 +1,208 @@
+---
+title: "Great Tables 2 in Python: Introducing Units Notation"
+authors: 
+  - Michael Chow
+  - Richard Iannone
+editors: 
+  - Omotola Ayodele Lawal
+date: today
+toc: true
+number-sections: true
+highlight-style: kate
+format: 
+  html:
+    code-fold: true
+    code-tools: true
+    css: global/style/style.css
+  docx: default
+jupyter: python3
+---
+
+
+# Code Along: Reactions Table
+
+This workshop (and future video), with presenters Michael Chow and Rich Iannone, is all about using [Great Tables](https://posit-dev.github.io/great-tables/articles/intro.html){target="_blank"} to make beautiful tables for publication and display purposes. We believe that effective tables have these things in common:
+
+1. structuring that aids in the reading of the table
+2. well-formatted values, fitting expectations for the field of study
+3. styling that reduces time to insight and improves aesthetics
+
+## About The Instructors
+
+**Michael Chow, Senior Software Engineer, Posit**
+
+Michael is a data scientist and software engineer. He has programmed in Python for well over a decade, and he obtained a PhD in cognitive psychology from Princeton University. His interests include statistical methods, skill acquisition, and human memory.
+
+**Richard Iannone, Senior Software Engineer, Posit**
+
+Richard is a software engineer and table enthusiast. He's been vigorously working on making display tables easier to create/display in Python. And generally Rich enjoys creating open source packages so that people can great things in their own work.
+
+## Start
+
+Setting up.
+
+```{python}
+import polars as pl
+import polars.selectors as cs
+from great_tables import GT, md
+from great_tables.data import reactions
+
+print(reactions)
+```
+
+Transforming the data.
+
+```{python}
+reactions_mini = (
+    pl.from_pandas(reactions)
+    .filter(pl.col("cmpd_type") == "mercaptan")
+    .select([
+        "cmpd_name",
+        "cmpd_formula",
+        cs.ends_with("k298")
+    ])
+    .with_columns(
+        cmpd_formula=pl.concat_str(
+            "%" + pl.col("cmpd_formula") + "%"
+        )
+    )
+)
+
+reactions_mini
+```
+
+Let's get the data into Great Tables. Plus let's make a stub.
+
+```{python}
+gt_tbl_1 = GT(reactions_mini, rowname_col="cmpd_name") 
+
+gt_tbl_1
+```
+
+## Introducing Units Notation
+
+Add a title to the table to explain the contents.
+
+```{python}
+gt_tbl_2 = (
+    gt_tbl_1
+    .tab_header(title=md("Gas-Phase reactions of selected **mercaptan** compounds"))
+)
+
+gt_tbl_2
+```
+
+Group numerical columns with a spanner. Use this for the label:
+`"Reaction Rate Constant (298 K),<br>{{cm^3 molecules^–1 s^–1}}"`
+
+```{python}
+gt_tbl_3 = (
+     gt_tbl_2
+    .tab_spanner(
+        label = "Reaction Rate Constant (298 K),<br>{{cm^3 molecules^–1 s^–1}}",
+        columns = cs.ends_with("k298")
+    )
+)
+
+gt_tbl_3
+```
+
+Change Column labels for readability. The column names are:
+`cmpd_formula`, `OH_k298`, `O3_k298`, `NO3_k298`, and `Cl_k298`.
+
+```{python}
+gt_tbl_4 = (
+    gt_tbl_3
+    .cols_label(
+        cmpd_formula="",
+        OH_k298= "OH",
+        O3_k298 = "{{O_3}}" ,
+        NO3_k298 = "{{NO_3}}",
+        Cl_k298 = "Cl"
+    )
+)
+gt_tbl_4
+```
+
+## Formatting for Science with fmt_units() and fmt_scientific()
+
+Format the chemical formulas to make them look better.
+
+```{python}
+gt_tbl_5 = (
+     gt_tbl_4
+    .fmt_units(columns= "cmpd_formula")
+)
+
+gt_tbl_5
+```
+
+Format the numeric values.
+
+```{python}
+gt_tbl_6 = (
+     gt_tbl_5
+    .fmt_scientific(columns=cs.ends_with("k298"))
+)
+
+gt_tbl_6
+```
+
+Replace the `None` values.
+
+```{python}
+gt_tbl_7 =  (
+     gt_tbl_6
+    .sub_missing(columns=cs.ends_with("k298"))
+)
+
+gt_tbl_7
+```
+
+Hide redundant columns.
+
+```{python}
+gt_tbl_8 = (
+     gt_tbl_7
+    .cols_hide(columns="O3_k298")
+)
+
+gt_tbl_8
+```
+
+## Using the opt_*() Methods for Quick Styling
+
+Use theming to style quickly.
+
+```{python}
+gt_tbl_9 = (
+     gt_tbl_8
+    .opt_stylize(color="red") # default is blue, it also has style as argument, which ranges from 1 to 6
+)
+
+gt_tbl_9
+```
+
+Don't use the default font.
+
+```{python}
+from great_tables import system_fonts
+
+gt_tbl_10 = (
+    gt_tbl_9
+    .opt_table_font(font=system_fonts(name="humanist"))
+)
+
+gt_tbl_10
+```
+
+Make more space between neighboring values.
+
+```{python}
+gt_tbl_11 = (
+    gt_tbl_10
+    .opt_horizontal_padding(scale= 3)
+)
+
+gt_tbl_11
+```
